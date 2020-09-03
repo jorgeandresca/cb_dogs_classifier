@@ -34,11 +34,11 @@ def get_num_subfolders(path):
 
 # Training variables
 image_width, image_height = 299, 299;
-num_epochs = 50
-batch_size = 32
-training_size = 85  # 100 => 100%
-dataset_dir = 'data/dataset'
-pretrained_model_path = ""
+num_epochs = 5
+batch_size = 35
+training_size = 50  # 100 => 100%
+dataset_dir = 'data/temp'
+pretrained_model_path = "models/model.h5"
 
 
 # Creating variations of the images by rotating, shift up, down left, right, sheared, zoom in,
@@ -85,6 +85,54 @@ validation_generator = create_img_generator().flow_from_directory(
     seed=42,
     subset='validation'  # 2 options: Training / Validation. This works if ImageDataGenerator.validation_split is set.
 )
+
+
+print("")
+print("Training: ")
+train_generator.next()
+idx = (train_generator.batch_index - 1) * train_generator.batch_size
+print(len(train_generator.filenames[idx : idx + train_generator.batch_size]))
+print(train_generator.filenames[idx : idx + train_generator.batch_size])
+
+train_generator.next()
+idx = (train_generator.batch_index - 1) * train_generator.batch_size
+print(len(train_generator.filenames[idx : idx + train_generator.batch_size]))
+print(train_generator.filenames[idx : idx + train_generator.batch_size])
+
+train_generator.next()
+idx = (train_generator.batch_index - 1) * train_generator.batch_size
+print(len(train_generator.filenames[idx : idx + train_generator.batch_size]))
+print(train_generator.filenames[idx : idx + train_generator.batch_size])
+
+print("")
+print("Validation: ")
+
+
+
+validation_generator.next()
+idx = (validation_generator.batch_index - 1) * validation_generator.batch_size
+print(len(validation_generator.filenames[idx : idx + validation_generator.batch_size]))
+print(validation_generator.filenames[idx : idx + validation_generator.batch_size])
+
+validation_generator.next()
+idx = (validation_generator.batch_index - 1) * validation_generator.batch_size
+print(len(validation_generator.filenames[idx : idx + validation_generator.batch_size]))
+print(validation_generator.filenames[idx : idx + validation_generator.batch_size])
+
+validation_generator.next()
+idx = (validation_generator.batch_index - 1) * validation_generator.batch_size
+print(len(validation_generator.filenames[idx : idx + validation_generator.batch_size]))
+print(validation_generator.filenames[idx : idx + validation_generator.batch_size])
+
+
+
+
+
+
+
+
+
+
 
 
 base_model = None
