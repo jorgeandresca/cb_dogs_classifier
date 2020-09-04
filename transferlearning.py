@@ -13,6 +13,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 from keras.models import load_model
 from keras.layers import Dense, GlobalAveragePooling2D
+import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -34,17 +35,21 @@ def get_num_subfolders(path):
 
 # Training variables
 image_width, image_height = 299, 299;
-num_epochs = 50
+num_epochs = 3
 batch_size = 32
 training_size = 85  # 100 => 100%
 dataset_dir = 'data/dataset'
-pretrained_model_path = ""
+pretrained_model = "models/0.823.h5"
+output_model = 'models/model.h5'
+output_image = 'models/chart.png'
+outputs = "models"
 
-
-# Creating variations of the images by rotating, shift up, down left, right, sheared, zoom in,
+# Data Augmentation. Creating variations of the images by rotating, shift up, down left, right, sheared, zoom in,
 #   or flipped horizontally on vertical axis
-def create_img_generator():
-    return ImageDataGenerator(
+#   This, replaces the original dataset by a new one.
+# ImageDataGenerator accepts the original data, randomly transforms it, and returns only the new, transformed data.
+# The network sees “new” images that it has never “seen” before at each and every epoch.
+img_generator = ImageDataGenerator(
         preprocessing_function=preprocess_input,
         rotation_range=30,
         width_shift_range=0.2,
@@ -55,42 +60,31 @@ def create_img_generator():
         validation_split= (100 - training_size)/100  # This will split the dataset in Training and Validation subsets.
     )
 
-
-real_num_train_samples = get_num_files(dataset_dir)
-num_classes = get_num_subfolders(dataset_dir)
-
-print("dataset: " + str(real_num_train_samples))
-print("num_classes: " + str(num_classes))
-print("")
-
-
-# Image generation (data augmentation)
-#    Each new batch of data is randomly adjusted according to the parameters supplied to ImageDataGenerator
-#   that's why we need to use. fit_generator later and not .fit
-#   However ->>> .fit_generator is deprecated, from now we must use .fit only
-
 print(" Training set:")
-train_generator = create_img_generator().flow_from_directory(
+train_generator = img_generator.flow_from_directory(
     dataset_dir,
     target_size=(image_width, image_height),
     batch_size=batch_size,
-    seed=42,
-    subset='training'  # 2 options: Training / Validation. This works if ImageDataGenerator.validation_split is set.
+    #seed=42,
+    subset='training'
 )
 print("  Validation set:")
-validation_generator = create_img_generator().flow_from_directory(
+validation_generator = img_generator.flow_from_directory(
     dataset_dir,
     target_size=(image_width, image_height),
     batch_size=batch_size,
-    seed=42,
-    subset='validation'  # 2 options: Training / Validation. This works if ImageDataGenerator.validation_split is set.
+    #seed=42,
+    subset='validation'
 )
+
+
+
 
 
 base_model = None
 model = None
 
-if(pretrained_model_path == ""):
+if(pretrained_model == ""):
 
     # Load the pretrained model
     #   Exclude the final fully connected layer (include_top=false)
@@ -110,26 +104,32 @@ if(pretrained_model_path == ""):
     model = Model(inputs=base_model.input, outputs=output)
 
 else:  # in case there is already a trained model.h5
-    base_model = load_model(pretrained_model_path)
+    base_model = load_model(pretrained_model)
     model = base_model  # As the base model already has the structure I need, then I use it as the main model
 
 
 
 
 """
-    print(model.summary()): 
-
-        Total params: 24,131,585
-        Trainable params: 2,328,801 (2.098.176 from our Dense 1024, and 230.625 (1025 * 225) from our output layer)
-        Non-trainable params: 21,802,784
+#    print(model.summary()):
+#
+#        Total params: 24,131,585
+#        Trainable params: 2,328,801 (2.098.176 from our Dense 1024, and 230.625 (1025 * 225) from our output layer)
+#        Non-trainable params: 21,802,784
 """
 
 
-"""
+
 # Compile
 #   We use categorical_crossentropy since our model is trying to classify categorical result
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
+# Preparing Early Stopping (patience: Number of epochs with no improvement after which training will be stopped)
+my_callbacks = [
+    tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=5),
+    #tf.keras.callbacks.ModelCheckpoint(filepath=outputs + '/model.{epoch:02d}-{val_accuracy:.2f}.h5')
+    tf.keras.callbacks.ModelCheckpoint(filepath=outputs + '/model.{epoch:02d}-{val_accuracy:.3f}.h5')
+]
 
 # Fit
 hist = model.fit(
@@ -137,28 +137,24 @@ hist = model.fit(
     epochs=num_epochs,
     steps_per_epoch= len(train_generator.filepaths) // batch_size,
     validation_data=validation_generator,
-    validation_steps= len(validation_generator.filepaths) // batch_size
+    validation_steps= len(validation_generator.filepaths) // batch_size,
+    callbacks=my_callbacks
 )
 
 # Evaluate the model
-score_train = np.round(model.evaluate(train_generator, verbose=0), 2)
-score_test = np.round(model.evaluate(validation_generator, verbose=0), 2)
-print('Test loss: ', score_test[0])
-print('Test accuracy: ', score_test[1])
+score_train = np.round(model.evaluate(train_generator, verbose=0), 3)
+score_test = np.round(model.evaluate(validation_generator, verbose=0), 3)
+print('Val loss: ', score_test[0])
+print('Val accuracy: ', score_test[1])
 
 
 # Saving model
-model.save('models/model.h5')
+model.save(output_model)
 
 
 # Printing the model
 epoch_list = list(range(1, len(hist.history['accuracy']) + 1))
-print("")
-print(epoch_list)
-print(hist.history['accuracy'])
 plt.plot(epoch_list, hist.history['accuracy'], epoch_list, hist.history['val_accuracy'])
 plt.legend(('Training Accuracy: ' +  str(score_train[1]), 'Validation Accuracy: ' + str(score_test[1])))
-plt.savefig('training_chart.png')
+plt.savefig(output_image)
 plt.show()
-
-"""
