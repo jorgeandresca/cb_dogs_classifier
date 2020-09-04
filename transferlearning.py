@@ -68,6 +68,7 @@ train_generator = img_generator.flow_from_directory(
     #seed=42,
     subset='training'
 )
+num_classes = len(train_generator.classes)
 print("  Validation set:")
 validation_generator = img_generator.flow_from_directory(
     dataset_dir,

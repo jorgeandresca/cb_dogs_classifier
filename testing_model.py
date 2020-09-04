@@ -14,7 +14,7 @@ from helper import acc_classes
 
 
 model = load_model('models/0.823.h5')
-img_pil = Image.open("data/test/toy_poodle_2.jpg")
+img_pil = Image.open("data/test/toy_poodle_1.jpg")
 dataset_dir = 'data/dataset'
 
 # Ensure the image is RGB since we need 3 channels
