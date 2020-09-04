@@ -13,36 +13,25 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 from keras.models import load_model
 from keras.layers import Dense, GlobalAveragePooling2D
+from keras.optimizers import Adam
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+from helper import get_num_subfolders
 
-
-# Get number of files in folder and subfolders
-def get_num_files(path):
-    if not os.path.exists(path):
-        return 0
-    return sum([len(files) for r, d, files in os.walk(path)])
-
-
-# Get number of subfolders directly below the folder in path
-def get_num_subfolders(path):
-    if not os.path.exists(path):
-        return 0
-    return sum([len(d) for r, d, files in os.walk(path)])
-
-
-# Training variables
+# Training Configuration
 image_width, image_height = 299, 299;
-num_epochs = 3
+num_epochs = 160
 batch_size = 32
 training_size = 85  # 100 => 100%
 dataset_dir = 'data/dataset'
-pretrained_model = "models/0.823.h5"
+#pretrained_model = "models/0.823.h5"
+pretrained_model = ""
 output_model = 'models/model.h5'
 output_image = 'models/chart.png'
 outputs = "models"
+num_classes = get_num_subfolders(dataset_dir)
 
 # Data Augmentation. Creating variations of the images by rotating, shift up, down left, right, sheared, zoom in,
 #   or flipped horizontally on vertical axis
@@ -57,6 +46,7 @@ img_generator = ImageDataGenerator(
         shear_range=0.2,
         zoom_range=0.2,
         horizontal_flip=True,
+        vertical_flip=True,
         validation_split= (100 - training_size)/100  # This will split the dataset in Training and Validation subsets.
     )
 
@@ -68,7 +58,6 @@ train_generator = img_generator.flow_from_directory(
     #seed=42,
     subset='training'
 )
-num_classes = len(train_generator.classes)
 print("  Validation set:")
 validation_generator = img_generator.flow_from_directory(
     dataset_dir,
@@ -81,7 +70,7 @@ validation_generator = img_generator.flow_from_directory(
 
 
 
-
+# Preparing the model
 base_model = None
 model = None
 
@@ -94,6 +83,7 @@ if(pretrained_model == ""):
     # Define a new classifier to attach to the pretrained model
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
+    x = Dense(1024, activation='relu')(x)
     x = Dense(1024, activation='relu')(x)
     output = Dense(num_classes, activation='softmax')(x)
 
@@ -109,8 +99,6 @@ else:  # in case there is already a trained model.h5
     model = base_model  # As the base model already has the structure I need, then I use it as the main model
 
 
-
-
 """
 #    print(model.summary()):
 #
@@ -120,15 +108,14 @@ else:  # in case there is already a trained model.h5
 """
 
 
-
 # Compile
 #   We use categorical_crossentropy since our model is trying to classify categorical result
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+opt = Adam(learning_rate=0.0001)
+model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
-# Preparing Early Stopping (patience: Number of epochs with no improvement after which training will be stopped)
+# Callbacks
 my_callbacks = [
     tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=5),
-    #tf.keras.callbacks.ModelCheckpoint(filepath=outputs + '/model.{epoch:02d}-{val_accuracy:.2f}.h5')
     tf.keras.callbacks.ModelCheckpoint(filepath=outputs + '/model.{epoch:02d}-{val_accuracy:.3f}.h5')
 ]
 
@@ -153,7 +140,7 @@ print('Val accuracy: ', score_test[1])
 model.save(output_model)
 
 
-# Printing the model
+# Plot results
 epoch_list = list(range(1, len(hist.history['accuracy']) + 1))
 plt.plot(epoch_list, hist.history['accuracy'], epoch_list, hist.history['val_accuracy'])
 plt.legend(('Training Accuracy: ' +  str(score_train[1]), 'Validation Accuracy: ' + str(score_test[1])))

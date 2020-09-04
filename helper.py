@@ -24,3 +24,9 @@ def acc_classes(path, acc_index):
             })
 
     return result_list
+
+# Get number of subfolders directly below the folder in path
+def get_num_subfolders(path):
+    if not os.path.exists(path):
+        return 0
+    return sum([len(d) for r, d, files in os.walk(path)])
