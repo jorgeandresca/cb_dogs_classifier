@@ -1,6 +1,6 @@
 from flask import Flask
 from flask import jsonify
-from app_classifier import classifier
+from modules.app_classifier import classifier
 
 
 app = Flask(__name__)
@@ -12,6 +12,6 @@ print("*** App is loaded")
 print("\n\n\n\n")
 
 
-@app.route("/", methods=['GET', 'POST'])
+@app.route("/", methods=["GET", "POST"])
 def home():
     return jsonify("Working")

@@ -8,18 +8,17 @@ from keras.models import load_model
 import numpy as np
 from io import BytesIO
 import requests
-
+from modules.helper import acc_classes
 
 classifier = Blueprint("classifier", __name__)
 
 
-@classifier.route("/", methods=['GET', 'POST'])
+@classifier.route("/", methods=["GET", "POST"])
 def home():
     return jsonify("Working")
 
 
-
-@classifier.route("/classify_image", methods=['POST'])
+@classifier.route("/classify_image", methods=["POST"])
 def classify_image():
     """
         Receives an image. Form-data
@@ -27,13 +26,13 @@ def classify_image():
     print("\n\n\nclassify_image")
 
     # Retrieve and open the file
-    file = request.files['image']
+    file = request.files["image"]
     image = Image.open(file.stream)
 
     return classify(image)
 
 
-@classifier.route("/classify_url", methods=['POST'])
+@classifier.route("/classify_url", methods=["POST"])
 def classify_url():
     """
         Receives a URL. Json
@@ -55,13 +54,13 @@ def classify(image):
 
     if model is None:
         print("\n\n *** Loading the model \n\n")
-        model = load_model("model.h5")  # Input (None, 299,299,3)
+        model = load_model("local/models/0.828.h5")  # Input (None, 299,299,3)
     else:
         print("\n\n *** Model is already loaded \n\n")
 
     # Ensure the image is RGB since we need 3 channels
     if image.mode != "RGB":
-        image = image.convert('RGB')
+        image = image.convert("RGB")
 
     # Resize it
     image = image.resize((299, 299))
@@ -72,13 +71,9 @@ def classify(image):
     image = preprocess_input(image)
 
     # Prediction
-    prediction = decode_predictions(model.predict(image, verbose=1))
-    prediction = prediction[0]
-
-    all_predictions = []
-    for i in range(len(prediction)):
-        class_predicted = {"class": prediction[i][1], "accuracy": float(prediction[i][2])}
-        all_predictions.append(class_predicted)
+    prediction = model.predict(image, verbose=1)[0]
+    acc_index = [sorted([(x, i) for (i, x) in enumerate(prediction)], reverse=True)[:5]][0]  # top 5 predictions
+    prediction = acc_classes("modules/classes.json", acc_index)
 
 
-    return jsonify(all_predictions)
+    return jsonify(prediction)

@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # This will hide those Keras messages
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # This will hide those Keras messages
 
 """
     InvceptionV3 has input (299, 299, 3) ((in case the environment is configured to have the channel at the end)
@@ -18,18 +18,17 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-from helper import get_num_subfolders
+from modules.helper import get_num_subfolders
 
 # Training Configuration
 image_width, image_height = 299, 299;
 num_epochs = 160
 batch_size = 32
 training_size = 85  # 100 => 100%
-dataset_dir = 'data/dataset'
-#pretrained_model = "models/0.823.h5"
-pretrained_model = ""
-output_model = 'models/model.h5'
-output_image = 'models/chart.png'
+dataset_dir = "data/dataset"
+pretrained_model = "models/0.828.h5"
+output_model = "models/model.h5"
+output_image = "models/chart.png"
 outputs = "models"
 num_classes = get_num_subfolders(dataset_dir)
 
@@ -46,7 +45,7 @@ img_generator = ImageDataGenerator(
         shear_range=0.2,
         zoom_range=0.2,
         horizontal_flip=True,
-        vertical_flip=True,
+        fill_mode="nearest",
         validation_split= (100 - training_size)/100  # This will split the dataset in Training and Validation subsets.
     )
 
@@ -56,7 +55,7 @@ train_generator = img_generator.flow_from_directory(
     target_size=(image_width, image_height),
     batch_size=batch_size,
     #seed=42,
-    subset='training'
+    subset="training"
 )
 print("  Validation set:")
 validation_generator = img_generator.flow_from_directory(
@@ -64,7 +63,7 @@ validation_generator = img_generator.flow_from_directory(
     target_size=(image_width, image_height),
     batch_size=batch_size,
     #seed=42,
-    subset='validation'
+    subset="validation"
 )
 
 
@@ -75,17 +74,15 @@ base_model = None
 model = None
 
 if(pretrained_model == ""):
-
     # Load the pretrained model
     #   Exclude the final fully connected layer (include_top=false)
-    base_model = InceptionV3(weights='imagenet', include_top=False)
+    base_model = InceptionV3(weights="imagenet", include_top=False)
 
     # Define a new classifier to attach to the pretrained model
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
-    x = Dense(1024, activation='relu')(x)
-    x = Dense(1024, activation='relu')(x)
-    output = Dense(num_classes, activation='softmax')(x)
+    x = Dense(1024, activation="relu")(x)
+    output = Dense(num_classes, activation="softmax")(x)
 
     # Freeze all layers in the pretrained model (BASE_MODEL)
     for layer in base_model.layers:
@@ -95,9 +92,7 @@ if(pretrained_model == ""):
     model = Model(inputs=base_model.input, outputs=output)
 
 else:  # in case there is already a trained model.h5
-    base_model = load_model(pretrained_model)
-    model = base_model  # As the base model already has the structure I need, then I use it as the main model
-
+    model = load_model(pretrained_model)
 
 """
 #    print(model.summary()):
@@ -110,13 +105,12 @@ else:  # in case there is already a trained model.h5
 
 # Compile
 #   We use categorical_crossentropy since our model is trying to classify categorical result
-opt = Adam(learning_rate=0.0001)
-model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
 # Callbacks
 my_callbacks = [
-    tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=5),
-    tf.keras.callbacks.ModelCheckpoint(filepath=outputs + '/model.{epoch:02d}-{val_accuracy:.3f}.h5')
+    #tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=5),
+    tf.keras.callbacks.ModelCheckpoint(filepath=outputs + "/model.{epoch:02d}-{val_accuracy:.3f}.h5")
 ]
 
 # Fit
@@ -132,8 +126,8 @@ hist = model.fit(
 # Evaluate the model
 score_train = np.round(model.evaluate(train_generator, verbose=0), 3)
 score_test = np.round(model.evaluate(validation_generator, verbose=0), 3)
-print('Val loss: ', score_test[0])
-print('Val accuracy: ', score_test[1])
+print("Val loss: ", score_test[0])
+print("Val accuracy: ", score_test[1])
 
 
 # Saving model
@@ -141,8 +135,9 @@ model.save(output_model)
 
 
 # Plot results
-epoch_list = list(range(1, len(hist.history['accuracy']) + 1))
-plt.plot(epoch_list, hist.history['accuracy'], epoch_list, hist.history['val_accuracy'])
-plt.legend(('Training Accuracy: ' +  str(score_train[1]), 'Validation Accuracy: ' + str(score_test[1])))
+epoch_list = list(range(1, len(hist.history["accuracy"]) + 1))
+plt.plot(epoch_list, hist.history["accuracy"], epoch_list, hist.history["val_accuracy"])
+plt.legend(("Training Accuracy: " + str(score_train[1]), "Validation Accuracy: " + str(score_test[1])))
 plt.savefig(output_image)
 plt.show()
+
